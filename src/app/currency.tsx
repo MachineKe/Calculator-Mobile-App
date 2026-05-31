@@ -1,4 +1,5 @@
 import CalculatorButton from '@/components/CalculatorButton';
+import { getCurrencyInfo } from '@/hooks/currencyData';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import { Link } from 'expo-router';
 import { useState } from 'react';
@@ -13,39 +14,11 @@ export default function CurrencyScreen() {
     const [isSelecting, setIsSelecting] = useState<'from' | 'to' | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Safely get full currency names (e.g. "US Dollar") depending on device JS engine support
-    const getCurrencyName = (code: string) => {
-        try {
-            return new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) || code;
-        } catch (e) {
-            return code;
-        }
-    };
-
-    // Extract country name from currency code (first 2 letters correspond to ISO country code)
-    const getCountryName = (code: string) => {
-        // Handle special currencies that don't map directly to a standard country region code
-        const specialCases: Record<string, string> = {
-            EUR: 'European Union',
-            XCD: 'East Caribbean',
-            XOF: 'West Africa',
-            XAF: 'Central Africa',
-        };
-        if (specialCases[code]) return specialCases[code];
-
-        try {
-            const regionCode = code.substring(0, 2);
-            return new Intl.DisplayNames(['en'], { type: 'region' }).of(regionCode) || '';
-        } catch (e) {
-            return '';
-        }
-    };
-
     const filteredCurrencies = calc.currencies.filter((code) => {
-        const name = getCurrencyName(code).toLowerCase();
-        const country = getCountryName(code).toLowerCase();
+        const info = getCurrencyInfo(code);
         const query = searchQuery.toLowerCase();
-        return code.toLowerCase().includes(query) || name.includes(query) || country.includes(query);
+
+        return code.toLowerCase().includes(query) || info.name.toLowerCase().includes(query) || info.country.toLowerCase().includes(query);
     });
 
     return (
@@ -141,28 +114,31 @@ export default function CurrencyScreen() {
                             data={filteredCurrencies}
                             keyExtractor={(item) => item}
                             showsVerticalScrollIndicator={false}
-                            renderItem={({ item }) => (
-                                <Pressable
-                                    className="py-4 border-b border-zinc-800 flex-row justify-between items-center"
-                                    onPress={() => {
-                                        if (isSelecting === 'from') calc.setFromCurrency(item);
-                                        if (isSelecting === 'to') calc.setToCurrency(item);
-                                        setIsSelecting(null);
-                                        setSearchQuery('');
-                                    }}
-                                >
-                                    <View>
-                                        <Text className="text-white text-lg font-bold">{item}</Text>
-                                        <Text className="text-zinc-400">
-                                            {getCurrencyName(item)}
-                                            {getCountryName(item) ? ` • ${getCountryName(item)}` : ''}
-                                        </Text>
-                                    </View>
-                                    {(isSelecting === 'from' ? calc.fromCurrency : calc.toCurrency) === item && (
-                                        <Text className="text-orange-500 text-2xl">✓</Text>
-                                    )}
-                                </Pressable>
-                            )}
+                            renderItem={({ item }) => {
+                                const info = getCurrencyInfo(item);
+                                return (
+                                    <Pressable
+                                        className="py-4 border-b border-zinc-800 flex-row justify-between items-center"
+                                        onPress={() => {
+                                            if (isSelecting === 'from') calc.setFromCurrency(item);
+                                            if (isSelecting === 'to') calc.setToCurrency(item);
+                                            setIsSelecting(null);
+                                            setSearchQuery('');
+                                        }}
+                                    >
+                                        <View className="flex-row items-center gap-4">
+                                            <Text className="text-4xl">{info.flag}</Text>
+                                            <View>
+                                                <Text className="text-white text-lg font-bold">{item} • {info.name}</Text>
+                                                <Text className="text-zinc-400">{info.country}</Text>
+                                            </View>
+                                        </View>
+                                        {(isSelecting === 'from' ? calc.fromCurrency : calc.toCurrency) === item && (
+                                            <Text className="text-orange-500 text-2xl">✓</Text>
+                                        )}
+                                    </Pressable>
+                                );
+                            }}
                         />
                     </View>
                 </View>
