@@ -114,6 +114,7 @@ export default function CurrencyScreen() {
                             data={filteredCurrencies}
                             keyExtractor={(item) => item}
                             showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
                             renderItem={({ item }) => {
                                 const info = getCurrencyInfo(item);
                                 return (
