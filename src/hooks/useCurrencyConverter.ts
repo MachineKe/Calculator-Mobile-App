@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-// Mock exchange rates with USD as the base currency
-const RATES: Record<string, number> = {
+// Fallback exchange rates in case the API fetch fails or is offline
+const FALLBACK_RATES: Record<string, number> = {
     USD: 1,
     EUR: 0.92,
     GBP: 0.79,
@@ -14,22 +14,28 @@ const RATES: Record<string, number> = {
     CHF: 0.88,
 };
 
-const CURRENCIES = Object.keys(RATES);
-
 export function useCurrencyConverter() {
+    const [rates, setRates] = useState<Record<string, number>>(FALLBACK_RATES);
+    const [currencies, setCurrencies] = useState<string[]>(Object.keys(FALLBACK_RATES));
     const [fromCurrency, setFromCurrency] = useState('USD');
     const [toCurrency, setToCurrency] = useState('KES');
     const [amount, setAmount] = useState('0');
+    const [activeInput, setActiveInput] = useState<'from' | 'to'>('from');
+    const [isLoading, setIsLoading] = useState(true);
 
-    const cycleFromCurrency = () => {
-        const idx = CURRENCIES.indexOf(fromCurrency);
-        setFromCurrency(CURRENCIES[(idx + 1) % CURRENCIES.length]);
-    };
-
-    const cycleToCurrency = () => {
-        const idx = CURRENCIES.indexOf(toCurrency);
-        setToCurrency(CURRENCIES[(idx + 1) % CURRENCIES.length]);
-    };
+    useEffect(() => {
+        // Fetch live exchange rates. Open Exchange Rates API provides daily updates for free without a key.
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.rates) {
+                    setRates(data.rates);
+                    setCurrencies(Object.keys(data.rates));
+                }
+            })
+            .catch(err => console.warn('Failed to fetch live rates, using offline fallback.', err))
+            .finally(() => setIsLoading(false));
+    }, []);
 
     const addNumber = (num: string) => {
         setAmount((prev) => {
@@ -47,18 +53,58 @@ export function useCurrencyConverter() {
     const clear = () => setAmount('0');
 
     const computedValue = parseFloat(amount);
-    let convertedAmount = '0';
+    let fromDisplay = '0';
+    let toDisplay = '0';
 
-    if (!isNaN(computedValue)) {
-        const inUSD = computedValue / RATES[fromCurrency];
-        const out = inUSD * RATES[toCurrency];
-
-        // Format mathematically to 2 decimal places with comma separation
-        convertedAmount = out.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
+    if (!isNaN(computedValue) && rates[fromCurrency] && rates[toCurrency]) {
+        if (activeInput === 'from') {
+            fromDisplay = amount;
+            const inUSD = computedValue / rates[fromCurrency];
+            const out = inUSD * rates[toCurrency];
+            toDisplay = out.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+        } else {
+            toDisplay = amount;
+            const inUSD = computedValue / rates[toCurrency];
+            const out = inUSD * rates[fromCurrency];
+            fromDisplay = out.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+        }
+    } else {
+        fromDisplay = activeInput === 'from' ? amount : '0';
+        toDisplay = activeInput === 'to' ? amount : '0';
     }
 
-    return { fromCurrency, toCurrency, amount, convertedAmount, cycleFromCurrency, cycleToCurrency, addNumber, deleteNumber, clear };
+    const swapCurrencies = () => {
+        setFromCurrency(toCurrency);
+        setToCurrency(fromCurrency);
+    };
+
+    const setFocus = (section: 'from' | 'to') => {
+        if (activeInput !== section) {
+            setActiveInput(section);
+            setAmount(section === 'from' ? fromDisplay.replace(/,/g, '') : toDisplay.replace(/,/g, ''));
+        }
+    };
+
+    return {
+        currencies,
+        fromCurrency,
+        toCurrency,
+        setFromCurrency,
+        setToCurrency,
+        fromDisplay,
+        toDisplay,
+        activeInput,
+        setFocus,
+        swapCurrencies,
+        addNumber,
+        deleteNumber,
+        clear,
+        isLoading
+    };
 }
