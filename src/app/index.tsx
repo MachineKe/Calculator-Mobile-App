@@ -1,6 +1,7 @@
 import CalculatorButton from '@/components/CalculatorButton';
 import Display from '@/components/Display';
 import { useCalculator } from '@/hooks/useCalculator';
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,13 +20,13 @@ export default function CalculatorScreen() {
         <Text className="text-white text-xl font-medium">Standard</Text>
         <View className="flex-row gap-2">
           <Link href="/scientific" asChild>
-            <Pressable className="bg-zinc-800 px-4 py-2 rounded-full active:opacity-70">
-              <Text className="text-white font-medium">Sci</Text>
+            <Pressable className="bg-zinc-800 w-10 h-10 items-center justify-center rounded-full active:opacity-70">
+              <Ionicons name="flask-outline" size={20} color="white" />
             </Pressable>
           </Link>
           <Link href="/currency" asChild>
-            <Pressable className="bg-zinc-800 px-4 py-2 rounded-full active:opacity-70">
-              <Text className="text-white font-medium">Cur</Text>
+            <Pressable className="bg-zinc-800 w-10 h-10 items-center justify-center rounded-full active:opacity-70">
+              <Ionicons name="cash-outline" size={20} color="white" />
             </Pressable>
           </Link>
         </View>
